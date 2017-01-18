@@ -40,7 +40,7 @@ if 'DATABASE_URL' in os.environ:
                 host=db_url.hostname,
                 port=db_url.port
             )
-        
+
         return DatabaseWrapper(db)
 else:
     import sqlite3
@@ -66,19 +66,27 @@ memes = []
 @app.route('/add_meme', methods=['POST'])
 def add_meme():
     new_id = len(memes)
-    memes.append({
-        'image': request.form['image'],
-        'top_caption': request.form['top_caption'],
-        'bottom_caption': request.form['bottom_caption'],
-        'id': new_id
-    })
+    get_db().execute('INSERT INTO memes(url, caption1, caption2) VALUES (?,?,?);', [
+        request.form['image'],
+        request.form['top_caption'],
+        request.form['bottom_caption']
+    ])
+    # memes.append({
+    #     'image': request.form['image'],
+    #     'top_caption': request.form['top_caption'],
+    #     'bottom_caption': request.form['bottom_caption'],
+    #     'id': new_id
+    # })
     return redirect(url_for('index'))
 
 @app.route('/meme/<id>')
 def show(id):
-    meme_img = memes[int(id)]['image']
-    top_caption = memes[int(id)]['top_caption']
-    bottom_caption = memes[int(id)]['bottom_caption']
+    #don't concatenate onto sql statements, security issues
+    thelist = get_db.select('SELECT url,caption1,caption2 FROM memes WHERE id=?;', [int(id)])
+    meme = thelist[0]
+    meme_img = meme[1], #memes[int(id)]['image']
+    top_caption = meme[2], #memes[int(id)]['top_caption']
+    bottom_caption = meme[3], #memes[int(id)]['bottom_caption']
     return render_template(
         'show.html',
         meme_img = meme_img,
@@ -93,6 +101,16 @@ def meme_form():
 @app.route('/')
 def index():
     #return str(datetime.now())
+    memes = []
+    for row in get_db().select('SELECT ID,url,caption1,caption2 FROM memes ORDER BY id DESC;'):
+        memes.append({
+            'image': row[1], #request.form['image'],
+            'top_caption': row[2], #request.form['top_caption'],
+            'bottom_caption': row[3], #request.form['bottom_caption'],
+            'id': row[0], #new_id
+        })
+
+
     return render_template('homepage.html', memes = memes)
     #up_to = int(request.args['count'])
     #out = "<ul>"
